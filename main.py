@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 from flask import Flask, jsonify, request, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -111,7 +112,34 @@ def check_rooms():
     available_rooms = filter(lambda room: room_dao(db).get_room_availability(room.room_id, start_time, end_time), room_dao(db).get_all_rooms())
     return jsonify([room._asdict() for room in available_rooms])
 
-#delete all booking records when deleting a room i.e. cascade delete using functional programming features like lambda algorithm and filter and such
+
+@app.route('/rooms/sort', methods=['GET'])
+def sort_rooms():
+    # Create instances of your DAOs
+    room_data_access = room_dao(db)
+    booking_data_access = booking_dao(db)
+
+    # Get all rooms and all bookings
+    rooms = room_data_access.get_all_rooms()
+    bookings = booking_data_access.get_all_bookings()
+
+    # For each room, find the date of the most recent booking
+    for room in rooms:
+        # Filter bookings for the current room
+        room_bookings = filter(lambda b: b['room_id'] == room['room_id'], bookings)
+
+        # Find the most recent booking for the room
+        latest_booking = max(room_bookings, key=lambda b: b['end_time'], default=None)
+
+        # Assign the most recent booking date to the room, or None if there are no bookings
+        room['last_booked'] = latest_booking['end_time'] if latest_booking else None
+
+    # Sort the rooms by the most recent booking date
+    sorted_rooms = sorted(rooms, key=lambda room: room['last_booked'] or datetime.min, reverse=True)
+
+    return jsonify([room._asdict() for room in sorted_rooms])
+
+
 @app.route('/rooms/<int:room_id>/delete', methods=['DELETE'])
 def delete_room_and_bookings(room_id):
     room_data_access = room_dao(db)
