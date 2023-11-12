@@ -111,6 +111,23 @@ def check_rooms():
     available_rooms = filter(lambda room: room_dao(db).get_room_availability(room.room_id, start_time, end_time), room_dao(db).get_all_rooms())
     return jsonify([room._asdict() for room in available_rooms])
 
+#delete all booking records when deleting a room i.e. cascade delete using functional programming features like lambda algorithm and filter and such
+@app.route('/rooms/<int:room_id>/delete', methods=['DELETE'])
+def delete_room_and_bookings(room_id):
+    # Create instances of your DAOs
+    room_data_access = room_dao(db)
+    booking_data_access = booking_dao(db)
+
+    # Retrieve all bookings for the specified room
+    bookings_to_delete = booking_data_access.get_bookings_by_room(room_id)
+
+    # Use a lambda function within a list comprehension to delete each booking
+    [lambda booking: booking_data_access.delete_booking(booking['booking_id']) for booking in bookings_to_delete]
+
+    # After deleting all bookings, delete the room
+    room_data_access.delete_room(room_id)
+
+    return jsonify({'success': True}), 200
 
 @app.route('/db/delete', methods=['GET'])
 def reset_db():
