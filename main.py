@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, jsonify, request, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 import bcrypt
@@ -108,6 +110,15 @@ def check_rooms():
     # Use filter to find rooms that are available between the given times
     available_rooms = filter(lambda room: room_dao(db).get_room_availability(room.room_id, start_time, end_time), room_dao(db).get_all_rooms())
     return jsonify([room._asdict() for room in available_rooms])
+
+
+@app.route('/db/delete', methods=['GET'])
+def reset_db():
+    try:
+        os.remove(db)
+    except FileNotFoundError:
+        pass
+    return jsonify({'success': True}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
