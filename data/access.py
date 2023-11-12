@@ -23,25 +23,19 @@ class user_dto:
     email: str
     password: str  # Im echten Einsatz sollte das Passwort verschlüsselt und sicher gespeichert werden
 
-
 @dataclass
-class availability_dto
+class booking_dto:
+    booking_id: int
+    user_id: int
     room_id: int
-    date: datetime  # Der Tag, für den die Verfügbarkeit geprüft wird
-    is_available: bool  # Gibt an, ob der Raum an diesem Tag verfügbar ist
-
-
-@dataclass
-class report_dto:
-    report_id: int
-    date_generated: datetime  # Das Datum, an dem der Bericht generiert wurde
-    total_bookings: int  # Die Gesamtanzahl der Buchungen
-    total_users: int  # Die Gesamtanzahl der Benutzer
-    # Weitere Felder können hinzugefügt werden, um spezifische Berichtsdaten zu erfassen
+    date: datetime
+    start_time: datetime
+    end_time: datetime
+    purpose: str
 
 def __init_database(cls):
     """
-    Initializes the database incase tables are missing 
+    Initializes the database incase tables are missing
     """
     class new_cls:
         def __init__(self, db_file: str, *args, **kwargs):
@@ -56,17 +50,17 @@ def __init_database(cls):
             cursor = conn.cursor()
 
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
-            if cursor.fetchall() is None:
+            if cursor.fetchone() is None:
                 cursor.execute('''
                         CREATE TABLE IF NOT EXISTS users (
                             user_id INTEGER PRIMARY KEY,
-                            username TEXT NOT NULL,
-                            email TEXT NOT NULL,
+                            username TEXT NOT NULL UNIQUE,
+                            email TEXT NOT NULL UNIQUE,
                             password TEXT NOT NULL
                         )
                     ''')
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='rooms'")
-            if cursor.fetchall() is None:
+            if cursor.fetchone() is None:
                 cursor.execute('''
                         CREATE TABLE IF NOT EXISTS rooms (
                             room_id INTEGER PRIMARY KEY,
@@ -77,7 +71,7 @@ def __init_database(cls):
                         )
                     ''')
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='bookings'")
-            if cursor.fetchall() is None:
+            if cursor.fetchone() is None:
                 cursor.execute('''
                         CREATE TABLE IF NOT EXISTS bookings (
                             booking_id INTEGER PRIMARY KEY,
@@ -88,16 +82,6 @@ def __init_database(cls):
                             purpose TEXT NOT NULL,
                             FOREIGN KEY (user_id) REFERENCES users (user_id),
                             FOREIGN KEY (room_id) REFERENCES rooms (room_id)
-                        )
-                    ''')
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='reports'")
-            if cursor.fetchall() is None:
-                cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS reports (
-                            report_id INTEGER PRIMARY KEY,
-                            date_generated TEXT NOT NULL,
-                            total_bookings INTEGER NOT NULL,
-                            total_users INTEGER NOT NULL
                         )
                     ''')
 
@@ -186,7 +170,7 @@ class room_dao:
 
 
 @__init_database
-class BookingDao:
+class booking_dao:
     def __init__(self, db_file):
         self.conn = sqlite3.connect(db_file)
         self.conn.row_factory = sqlite3.Row
@@ -257,7 +241,7 @@ class BookingDao:
             return cursor.fetchall()
 
 @__init_database
-class UserDao:
+class user_dao:
     def __init__(self, db_file):
         self.conn = sqlite3.connect(db_file)
 
@@ -273,7 +257,7 @@ class UserDao:
         cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
         row = cursor.fetchone()
         if row:
-            return UserDTO(row[0], row[1], row[2], row[3])
+            return user_dto(row[0], row[1], row[2], row[3], False)
         return None
 
 
@@ -288,7 +272,7 @@ class UserDao:
         cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
         row = cursor.fetchone()
         if row:
-            return UserDTO(row[0], row[1], row[2], row[3])
+            return user_dto(row[0], row[1], row[2], row[3])
         return None
 
     def get_all_users(self):
@@ -297,7 +281,7 @@ class UserDao:
         rows = cursor.fetchall()
         users = []
         for row in rows:
-            users.append(UserDTO(row[0], row[1], row[2], row[3]))
+            users.append(user_dto(row[0], row[1], row[2], row[3]))
         return users
 
     def delete_user(self, user_id):
@@ -316,87 +300,5 @@ class UserDao:
         cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
         row = cursor.fetchone()
         if row:
-            return UserDTO(row[0], row[1], row[2], row[3])
+            return user_dto(row[0], row[1], row[2], row[3])
         return None
-
-@__init_database
-class AvailabilityDao:
-    def __init__(self, db_file):
-        self.conn = sqlite3.connect(db_file)
-        self.conn.row_factory = sqlite3.Row
-
-    def add_availability(self, availability_dto):
-        with self.conn:
-            cursor = self.conn.cursor()
-            cursor.execute('''
-                INSERT INTO availabilities (room_id, start_time, end_time)
-                VALUES (?, ?, ?)
-            ''', (availability_dto.room_id, availability_dto.start_time, availability_dto.end_time))
-            return cursor.lastrowid
-
-    # Weitere Methoden für das Abrufen, Aktualisieren und Löschen von Verfügbarkeiten
-
-    def get_availabilities_by_room(self, room_id):
-        with self.conn:
-            cursor = self.conn.cursor()
-            cursor.execute('''
-                SELECT * FROM availabilities WHERE room_id = ?
-            ''', (room_id,))
-            return cursor.fetchall()
-
-    def get_availabilities_by_date(self, date):
-        with self.conn:
-            cursor = self.conn.cursor()
-            cursor.execute('''
-                SELECT * FROM availabilities WHERE start_time LIKE ?
-            ''', (date.strftime('%Y-%m-%d') + '%',))
-            return cursor.fetchall()
-
-
-class ReportDao:
-    def __init__(self, db_file):
-        self.conn = sqlite3.connect(db_file)
-        self.conn.row_factory = sqlite3.Row
-
-    def create_table(self):
-        with self.conn:
-            self.conn.execute('''
-                CREATE TABLE IF NOT EXISTS reports (
-                    report_id INTEGER PRIMARY KEY,
-                    user_id INTEGER NOT NULL,
-                    room_id INTEGER NOT NULL,
-                    start_time TEXT NOT NULL,
-                    end_time TEXT NOT NULL,
-                    purpose TEXT NOT NULL,
-                    FOREIGN KEY (user_id) REFERENCES users (user_id),
-                    FOREIGN KEY (room_id) REFERENCES rooms (room_id)
-                )
-            ''')
-
-    def add_report(self, report_dto):
-        with self.conn:
-            cursor = self.conn.cursor()
-            cursor.execute('''
-                INSERT INTO reports (user_id, room_id, start_time, end_time, purpose)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (report_dto.user_id, report_dto.room_id, report_dto.start_time, report_dto.end_time, report_dto.purpose))
-            return cursor.lastrowid
-
-    # Weitere Methoden für das Abrufen, Aktualisieren und Löschen von Reports
-
-    def get_reports_by_user(self, user_id):
-        with self.conn:
-            cursor = self.conn.cursor()
-            cursor.execute('''
-                SELECT * FROM reports WHERE user_id = ?
-            ''', (user_id,))
-            return cursor.fetchall()
-
-    def get_reports_by_room(self, room_id):
-        with self.conn:
-            cursor = self.conn.cursor()
-            cursor.execute('''
-                SELECT * FROM reports WHERE room_id = ?
-            ''', (room_id,))
-            return cursor.fetchall()
-

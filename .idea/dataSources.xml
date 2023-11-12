@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="somethin" uuid="1fa926a1-7a82-402e-a650-97438dab0704">
+    <data-source source="LOCAL" name="reservation.db" uuid="6d0b8160-4d4a-460b-b5bf-6f1ac2aa6116">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:C:\development\python-dev\M323-Flask-Testing-and-Main-Project\somethin.db</jdbc-url>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/reservation.db</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>
